@@ -5,20 +5,16 @@ source cosmetics
 cosmetics
 
 		
+		input_print "Path to Disk Installation device (eg. /dev/sda etc): "
+		read -r DISK
 		input_print "Path to EFI Disk (eg. /dev/sda1 etc): "
 		read -r EFI_DISK
 		input_print "Path to SWAP Disk (eg. /dev/sda1 etc): "
 		read -r SWAP_DISK
-		input_print "Path to EFI Disk (eg. /dev/sda1 etc): "
+		input_print "Path to ROOT Disk (eg. /dev/sda1 etc): "
 		read -r ROOT_DISK
-		input_print "Path to EFI Disk (eg. /dev/sda1 etc): "
+		input_print "Path to HOME Disk (eg. /dev/sda1 etc): "
 		read -r HOME_DISK
-
-
-		EFI_UUID=$(lsblk -o UUID $EFI_DISK | grep -v UUID)
-		SWAP_UUID=$(lsblk -o UUID $SWAP_DISK | grep -v UUID)
-		ROOT_UUID=$(lsblk -o UUID $ROOT_DISK | grep -v UUID)
-		HOME_UUID=$(lsblk -o UUID $HOME_DISK | grep -v UUID)
 		
 		### FORMATTING PARTITIONS
 
@@ -38,14 +34,18 @@ cosmetics
         info_print "Formatting HOME partition as ext4 filesystem..."
     	sudo mkfs.ext4 -L Arch-HOME $HOME_DISK
 
-        info_print "Formatting partitions..."
-        sleep 3
-
     # Printing out partition layout
         info_print "Partition layout..."
     	sudo sgdisk -p $DISK
-        sleep 4
-		clear
+	
+		input_print "Press any key to continue..."		
+		read -n 1 -s -r
+
+		EFI_UUID=$(lsblk -o UUID $EFI_DISK | grep -v UUID)
+		SWAP_UUID=$(lsblk -o UUID $SWAP_DISK | grep -v UUID)
+		ROOT_UUID=$(lsblk -o UUID $ROOT_DISK | grep -v UUID)
+		HOME_UUID=$(lsblk -o UUID $HOME_DISK | grep -v UUID)
+		
 
 		### Mount and Create Subvolumes
 
@@ -190,7 +190,7 @@ cosmetics
 ### Pacstrap Installation ###
 Base_Packages="base linux linux-headers intel-ucode linux-firmware sof-firmware base-devel btrfs-progs ntfs-3g nano vim tree grub grub-btrfs efibootmgr os-prober snapper snap-pac mtools dosfstools networkmanager network-manager-applet reflector git man-db man-pages texinfo wpa_supplicant dialog pulseaudio pavucontrol alsa-utils alsa-plugins xdg-utils xdg-user-dirs"
 info_print "Pacstrap /mnt installation..."
-pacstrap /mnt Base_Packages
+pacstrap /mnt $Base_Packages
 clear
 info_print "Base packages installation done..."
 input_print "Press any key to continue..."
