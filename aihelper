@@ -1,0 +1,184 @@
+#!/bin/bash
+
+############ Arch Install Helper ####################
+source cosmetics
+
+### Mount and Create Subvolumes
+
+		EFI_UUID=$(lsblk -o UUID /path-to-efi | grep -v UUID)
+		SWAP_UUID=$(lsblk -o UUID /path-to-swap | grep -v UUID)
+		ROOT_UUID=$(lsblk -o UUID /path-to-root | grep -v UUID)
+		HOME_UUID=$(lsblk -o UUID /path-to-home| grep -v UUID)
+
+
+		info_print "Mounting the root BTRFS partition..."
+        sudo mount UUID="$ROOT_UUID" /mnt &>/dev/null
+
+        info_print "Create subvolume/mnt/@ "
+        sudo btrfs subvolume create /mnt/@ &>/dev/null
+
+        info_print "Create subvolume /mnt/@/.snapshots"
+        sudo btrfs subvolume create /mnt/@/.snapshots &>/dev/null
+
+    	info_print "Create directory /mnt/@/.snapshots/1..."
+    	sudo mkdir /mnt/@/.snapshots/1 &>/dev/null
+
+        info_print "Create subvolume /mnt/@/.snapshots/1/snapshot"
+        sudo btrfs subvolume create /mnt/@/.snapshots/1/snapshot &>/dev/null
+
+        info_print "Create directory /mnt/@/boot"
+        sudo mkdir /mnt/@/boot &>/dev/null
+
+        info_print "Create subvolume /mnt/@/boot/grub"
+        sudo btrfs subvolume create /mnt/@/boot/grub &>/dev/null
+
+        info_print "Create subvolume /mnt/@/opt"
+        sudo btrfs subvolume create /mnt/@/opt &>/dev/null
+
+        info_print "Create subvolume /mnt/@/root"
+        sudo btrfs subvolume create /mnt/@/root &>/dev/null
+
+        info_print "Create subvolume /mnt/@/srv"
+        sudo btrfs subvolume create /mnt/@/srv &>/dev/null
+
+        info_print "Create subvolume /mnt/@/tmp"
+        sudo btrfs subvolume create /mnt/@/tmp &>/dev/null
+
+        info_print "Create directory /mnt/@/usr"
+        sudo mkdir /mnt/@/usr &>/dev/null
+
+        info_print "Create subvolume /mnt/@/usr/local"
+        sudo btrfs subvolume create /mnt/@/usr/local &>/dev/null
+
+        info_print "Create directory /mnt/@/var"
+        sudo mkdir /mnt/@/var &>/dev/null
+
+		info_print "Create subvolume /mnt/@/var/cache"
+        sudo btrfs subvolume create /mnt/@/var/cache &>/dev/null
+
+        info_print "Create subvolume /mnt/@/var/log"
+        sudo btrfs subvolume create /mnt/@/var/log &>/dev/null
+
+        info_print "Create subvolume /mnt/@/var/spool"
+        sudo btrfs subvolume create /mnt/@/var/spool &>/dev/null
+
+        info_print "Create subvolume /mnt/@/var/tmp"
+        sudo btrfs subvolume create /mnt/@/var/tmp &>/dev/null
+
+        Date=$(date +"%Y-%m-%d %H:%M:%S")
+        sed "s|temp|$Date|g" info-dummy.xml > info.xml
+        sudo cp info.xml /mnt/@/.snapshots/1/
+
+		info_print "Setting default subvolume..."
+        sudo btrfs subvolume set-default $(btrfs subvolume list /mnt | grep "@/.snapshots/1/snapshot" | grep -oP '(?<=ID )[0-9]+') /mnt
+
+        info_print "Enabling quotas on btrfs filesystem..."
+        sudo btrfs quota enable /mnt
+
+        info_print "Disable CoW on /@/var subvolume..."
+        sudo chattr +C /mnt/@/var/cache
+        sudo chattr +C /mnt/@/var/log
+        sudo chattr +C /mnt/@/var/spool
+        sudo chattr +C /mnt/@/var/tmp
+
+		info_print "Created  subvolumes on /mnt: (sudo btrfs subvolume list /mnt)"
+        sudo btrfs subvolume list /mnt
+        input_print "Press any key to continue..."
+        read -n 1 -s -r
+		info_print ""
+
+        sudo umount /mnt
+		clear
+
+### End of phase one ########
+### Phase 2 #######
+
+	mount UUID="$ROOT_UUID" -o compress=zstd /mnt
+
+    ### Make Mountpoints for Subvolumes
+        info_print "Creating mountpoints for subvolumes inside root; home and efi..."
+
+        sudo mkdir /mnt/.snapshots
+        sudo mkdir -p /mnt/boot/grub
+        sudo mkdir /mnt/opt
+        sudo mkdir /mnt/root
+        sudo mkdir /mnt/srv
+        sudo mkdir /mnt/tmp
+        sudo mkdir -p /mnt/usr/local
+        sudo mkdir -p /mnt/var/cache
+        sudo mkdir /mnt/var/log
+        sudo mkdir /mnt/var/spool
+        sudo mkdir /mnt/var/tmp
+        sudo mkdir /mnt/efi
+        sudo mkdir /mnt/home
+
+		pacman -S --noconfirm tree
+		clear
+		info_print "The following mountpoints were just created:"
+		tree -L 3 /mnt
+		input_print "Press any key to continue..."
+		read -n -1 -s -r
+		info_print ""
+		clear
+
+		info_print "Mounting ROOT subvolumes, HOME and swapon..."
+        sudo mount UUID="$ROOT_UUID" -o subvol=@/.snapshots,compress=zstd /mnt/.snapshots
+        sudo mount UUID="$ROOT_UUID" -o subvol=@/boot/grub,compress=zstd /mnt/boot/grub
+        sudo mount UUID="$ROOT_UUID" -o subvol=@/opt,compress=zstd /mnt/opt
+        sudo mount UUID="$ROOT_UUID" -o subvol=@/root,compress=zstd /mnt/root
+        sudo mount UUID="$ROOT_UUID" -o subvol=@/srv,compress=zstd /mnt/srv
+        sudo mount UUID="$ROOT_UUID" -o subvol=@/tmp,compress=zstd /mnt/tmp
+        sudo mount UUID="$ROOT_UUID" -o subvol=@/usr/local,compress=zstd /mnt/usr/local
+        sudo mount UUID="$ROOT_UUID" -o subvol=@/var/cache,nodatacow /mnt/var/cache
+        sudo mount UUID="$ROOT_UUID" -o subvol=@/var/log,nodatacow /mnt/var/log
+        sudo mount UUID="$ROOT_UUID" -o subvol=@/var/spool,nodatacow /mnt/var/spool
+        sudo mount UUID="$ROOT_UUID" -o subvol=@/var/tmp,nodatacow /mnt/var/tmp
+        sudo mount UUID="$EFI_UUID" /mnt/efi
+        sudo mount UUID="$HOME_UUID" /mnt/home
+        sudo swapon UUID="$SWAP_UUID"
+        input_print "Press any key to continue..."
+        read -n 1 -s -r
+		info_print ""
+
+		info_print "Verify partitions, formatting and mountpoints!"
+		sudo lsblk $DISK -o NAME,SIZE,FSTYPE,MOUNTPOINTS
+		input_print "Press any key to continue..."
+		read -n -1 -s -r
+		info_print ""
+		clear
+
+### End of Phase Two ####
+
+### Pacstrap Installation ###
+Base_Packages="base linux linux-headers intel-ucode linux-firmware sof-firmware base-devel btrfs-progs ntfs-3g nano vim tree grub grub-btrfs efibootmgr os-prober snapper snap-pac mtools dosfstools networkmanager network-manager-applet reflector git man-db man-pages texinfo wpa_supplicant dialog pulseaudio pavucontrol alsa-utils alsa-plugins xdg-utils xdg-user-dirs"
+info_print "Pacstrap /mnt installation..."
+pacstrap /mnt Base_Packages
+clear
+info_print "Base packages installation done..."
+input_print "Press any key to continue..."
+read -n 1 -s -r
+clear
+### End of Pacstrap Installation #######
+
+###################### Generate fstab and Edit fstab ##########################
+# Generate_fstab
+info_print "Generating fstab..."
+genfstab -U /mnt >> /mnt/etc/fstab
+
+## Editing fstab
+full_opts=$(grep subvolid=258 /mnt/etc/fstab | awk ' {print $4} ')
+last_col="0  0"
+opts=$(echo $full_opts | sed "s|,subvolid=258,subvol=/@/.snapshots/1/snapshot||")
+SUB="UUID=$ROOT_UUID \t \t /\t\t  btrfs \t $opts \t $last_col"
+sed -i "/subvolid=258/ c $SUB" /mnt/etc/fstab
+
+##  Edit 10_linux and 20_linux_xen files
+sed -i 's/rootflags=subvol=${rootsubvol}//g' /mnt/etc/grub.d/10_linux
+sed -i 's/rootflags=subvol=${rootsubvol}//g' /mnt/etc/grub.d/20_linux_xen
+clear
+
+input_print "Generating, Editing fstab & editing 10_linux & 20_linux_xen files over. Press any key to continue..."
+read -n 1 -s -r
+
+exit
+
