@@ -155,7 +155,7 @@ cosmetics
 		info_print "The following mountpoints were just created:"
 		tree -L 3 /mnt
 		input_print "Press any key to continue..."
-		read -n -1 -s -r
+		read -n 1 -s -r
 		info_print ""
 		clear
 
@@ -181,7 +181,7 @@ cosmetics
 		info_print "Verify partitions, formatting and mountpoints!"
 		sudo lsblk $DISK -o NAME,SIZE,FSTYPE,MOUNTPOINTS
 		input_print "Press any key to continue..."
-		read -n -1 -s -r
+		read -n 1 -s -r
 		info_print ""
 		clear
 
@@ -190,8 +190,10 @@ cosmetics
 ### Pacstrap Installation ###
 Base_Packages="base linux linux-headers intel-ucode linux-firmware sof-firmware base-devel btrfs-progs ntfs-3g nano vim tree grub grub-btrfs efibootmgr os-prober snapper snap-pac mtools dosfstools networkmanager network-manager-applet reflector git man-db man-pages texinfo wpa_supplicant dialog pulseaudio pavucontrol alsa-utils alsa-plugins xdg-utils xdg-user-dirs"
 info_print "Pacstrap /mnt installation..."
+input_print "Press any key to continue..."
+read -n 1 -s -r
+
 pacstrap /mnt $Base_Packages
-clear
 info_print "Base packages installation done..."
 input_print "Press any key to continue..."
 read -n 1 -s -r
@@ -213,7 +215,6 @@ sed -i "/subvolid=258/ c $SUB" /mnt/etc/fstab
 ##  Edit 10_linux and 20_linux_xen files
 sed -i 's/rootflags=subvol=${rootsubvol}//g' /mnt/etc/grub.d/10_linux
 sed -i 's/rootflags=subvol=${rootsubvol}//g' /mnt/etc/grub.d/20_linux_xen
-clear
 
 input_print "Generating, Editing fstab & editing 10_linux & 20_linux_xen files over. Press any key to continue..."
 read -n 1 -s -r
