@@ -2,14 +2,52 @@
 
 ############ Arch Install Helper ####################
 source cosmetics
+cosmetics
 
-### Mount and Create Subvolumes
+		
+		input_print "Path to EFI Disk (eg. /dev/sda1 etc): "
+		read -r EFI_DISK
+		input_print "Path to SWAP Disk (eg. /dev/sda1 etc): "
+		read -r SWAP_DISK
+		input_print "Path to EFI Disk (eg. /dev/sda1 etc): "
+		read -r ROOT_DISK
+		input_print "Path to EFI Disk (eg. /dev/sda1 etc): "
+		read -r HOME_DISK
 
-		EFI_UUID=$(lsblk -o UUID /path-to-efi | grep -v UUID)
-		SWAP_UUID=$(lsblk -o UUID /path-to-swap | grep -v UUID)
-		ROOT_UUID=$(lsblk -o UUID /path-to-root | grep -v UUID)
-		HOME_UUID=$(lsblk -o UUID /path-to-home| grep -v UUID)
 
+		EFI_UUID=$(lsblk -o UUID $EFI_DISK | grep -v UUID)
+		SWAP_UUID=$(lsblk -o UUID $SWAP_DISK | grep -v UUID)
+		ROOT_UUID=$(lsblk -o UUID $ROOT_DISK | grep -v UUID)
+		HOME_UUID=$(lsblk -o UUID $HOME_DISK | grep -v UUID)
+		
+		### FORMATTING PARTITIONS
+
+	## Format ESP/EFI Partition as FAT32 with filesystem label Arch-EFI
+        info_print "Formatting EFI Partition as fat32 filesystem..."
+    	sudo mkfs.vfat -F 32 -n Arch-EFI $EFI_DISK
+    #
+    # Format SWAP Partition with filesystem label Arch-SWAP
+        info_print "Creating SWAP partition..."
+    	sudo mkswap -L Arch-SWAP $SWAP_DISK
+    #
+    # Format ROOT Partition with filesystem label Arch-ROOT
+        info_print "Formatting ROOT partition as btrfs filesystem..."
+    	sudo mkfs.btrfs -L Arch-ROOT -f -n 32k $ROOT_DISK
+    #
+    # Format HOME Partition with filesystem label Arch-HOME
+        info_print "Formatting HOME partition as ext4 filesystem..."
+    	sudo mkfs.ext4 -L Arch-HOME $HOME_DISK
+
+        info_print "Formatting partitions..."
+        sleep 3
+
+    # Printing out partition layout
+        info_print "Partition layout..."
+    	sudo sgdisk -p $DISK
+        sleep 4
+		clear
+
+		### Mount and Create Subvolumes
 
 		info_print "Mounting the root BTRFS partition..."
         sudo mount UUID="$ROOT_UUID" /mnt &>/dev/null
