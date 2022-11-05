@@ -4,7 +4,30 @@
 source cosmetics
 cosmetics
 
-		
+	
+locale_selector () {
+
+    input_print "Please insert the locale you use (format: xx_XX. Enter empty to use en_U>
+    read -r locale
+    case "$locale" in
+        '') locale="en_US.UTF-8"
+            info_print "$locale will be the default locale."
+            return 0;;
+        '/') sed -E '/^# +|^#$/d;s/^#| *$//g;s/ .*/ (Charset:&)/' /etc/locale.gen | less -M
+                clear
+                return 1;;
+        *)  if ! grep -q "^#\?$(sed 's/[].*[]/\\&/g' <<< $locale) " /etc/locale.gen; then
+                error_print "The specified locale doesn't exist or isn't supported."
+                return 1
+            fi
+            return 0
+    esac
+}
+
+		until locale_selector; do : ; done
+		clear
+
+			
 		input_print "Path to Disk Installation device (eg. /dev/sda etc): "
 		read -r DISK
 		input_print "Path to EFI Disk (eg. /dev/sda1 etc): "
@@ -132,7 +155,9 @@ cosmetics
 ### Phase 2 #######
 
 	mount UUID="$ROOT_UUID" -o compress=zstd /mnt
-
+	input_print "Press any key to continue..."
+	read -n 1 -s -r
+	info_print ""
     ### Make Mountpoints for Subvolumes
         info_print "Creating mountpoints for subvolumes inside root; home and efi..."
 
@@ -149,9 +174,11 @@ cosmetics
         sudo mkdir /mnt/var/tmp
         sudo mkdir /mnt/efi
         sudo mkdir /mnt/home
+		input_print "Press any key to continue..."
+		read -n 1 -s -r
+		info_print ""
 
-		pacman -S --noconfirm tree
-		clear
+		pacman -S tree
 		info_print "The following mountpoints were just created:"
 		tree -L 3 /mnt
 		input_print "Press any key to continue..."
@@ -160,6 +187,10 @@ cosmetics
 		clear
 
 		info_print "Mounting ROOT subvolumes, HOME and swapon..."
+		input_print "Press any key to continue..."
+		read -n 1 -s -r
+		info_print ""
+
         sudo mount UUID="$ROOT_UUID" -o subvol=@/.snapshots,compress=zstd /mnt/.snapshots
         sudo mount UUID="$ROOT_UUID" -o subvol=@/boot/grub,compress=zstd /mnt/boot/grub
         sudo mount UUID="$ROOT_UUID" -o subvol=@/opt,compress=zstd /mnt/opt
@@ -219,5 +250,100 @@ sed -i 's/rootflags=subvol=${rootsubvol}//g' /mnt/etc/grub.d/20_linux_xen
 input_print "Generating, Editing fstab & editing 10_linux & 20_linux_xen files over. Press any key to continue..."
 read -n 1 -s -r
 
+#################### System configurations without chrooting ##########
+info_print "Configuring system..."
+
+info_print "Setting hostname..."
+echo archie39 > /mnt/etc/hostname
+
+info_print "Configuring locale and console keymap..."
+sed -i "/^#$locale/s/^#//" /mnt/etc/locale.gen
+echo "LANG=$locale" > /mnt/etc/locale.conf
+echo "KEYMAP=us" > /mnt/etc/vconsole.conf
+
+
+info_print "Setting up hosts file."
+cat > /mnt/etc/hosts <<EOF
+127.0.0.1       localhost
+::1                     localhost
+127.0.1.1       archie39.localdomain   archie39
+EOF
+
+info_print "Editing pacman.conf..."
+sed -i 's/#Color/Color/' /mnt/etc/pacman.conf
+sed -i '/Color/ a ILoveCandy' /mnt/etc/pacman.conf
+sed -i 's/#ParallelDownloads/ParallelDownloads/' /mnt/etc/pacman.conf
+
+info_print "Setting root password."
+echo "root:haokip" | arch-chroot /mnt chpasswd
+
+# Setting user account with sudo privileges
+info_print "Setting User Account..."
+#if [[ -n "$username" ]]; then
+        echo "%wheel ALL=(ALL:ALL) ALL" > /mnt/etc/sudoers.d/wheel
+        info_print "Adding User haopu to the system with root privileges."
+        arch-chroot /mnt useradd -m -G wheel -s /bin/bash haopu
+        info_print "Setting User password for haopu."
+        echo "haopu:haokip" | arch-chroot /mnt chpasswd
+#fi
+input_print "Press any key to continue..."
+read -n 1 -s -r
+info_print ""
+clear
+
+info_print "About to enter arch-chroot..."
+input_print "Press any key to continue..."
+read -n 1 -s -r
+
+#### Main chroot section
+info_print "Settings inside arch-chroot..."
+arch-chroot /mnt /bin/bash -e <<EOF
+        # 1. Setting up timezone
+        echo "Setting up timezone..."
+        ln -sf /usr/share/zoneinfo/$(curl -s http://ip-api.com/line?fields=timezone) /etc/localtime &>/dev/null
+
+        pacman -Syy
+
+        # 3. Synchronize clocks
+        echo "Synchronizing hwclock to systohc..."
+         hwclock --systohc
+
+# 4. Initialize Snapper
+        echo "Initializing Snapper..."
+        umount /.snapshots
+        rm -r /.snapshots
+        snapper --no-dbus -c root create-config /
+        btrfs subvolume delete /.snapshots
+        mkdir /.snapshots
+        mount -a
+        chmod 750 /.snapshots
+
+        # 4. Generating locales
+        locale-gen
+
+        # 5. Installing GRUB.
+        echo "Installing GRUB..."
+    grub-install --target=x86_64-efi --efi-directory=/efi --bootloader-id=ARCH-B --modules="normal test efi_gop efi_uga search echo linux all_video gfxmenu gfxterm_background gfxterm_menu gfxterm loadenv configfile gzio part_gpt btrfs"
+		grub-mkconfig -o /boot/grub/grub.cfg &>/dev/null
+
+        exit
+EOF
+# Copy post-install script (including related files, if any)
+sudo cp post-install.sh /mnt/home/haopu/
+sudo cp cosmetics /mnt/home/haopu/
+sudo umount -a &>/dev/null
+clear
+info_print "                   Installation Complete!"
+info_print "                 Type reboot and press Enter."
+info_print "IMPORTANT! After reboot, you must still run the post-install.sh script."
+info_print "1. Log back in as your username (not root!)."
+info_print "2. Run the script: ./post-install.sh"
+info_print "3. NOTE: You will be greeted with a black getty1. "
+info_print ""
+info_print ""
+info_print "You are now ready to reboot...press any key to continue..."
+read -n 1 -s -r
 exit
+
+
 

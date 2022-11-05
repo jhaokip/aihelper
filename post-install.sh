@@ -1,6 +1,8 @@
 #!/bin/bash
 
 source cosmetics
+source UUID.txt
+
 #######################################################################################
 #
 # Post installation script
