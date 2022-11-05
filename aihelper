@@ -68,7 +68,11 @@ locale_selector () {
 		SWAP_UUID=$(lsblk -o UUID $SWAP_DISK | grep -v UUID)
 		ROOT_UUID=$(lsblk -o UUID $ROOT_DISK | grep -v UUID)
 		HOME_UUID=$(lsblk -o UUID $HOME_DISK | grep -v UUID)
-		
+	
+		echo "efi_uuid=$EFI_UUID" > UUID.txt
+		echo "swap_uuid=$SWAP_UUID" >> UUID.txt
+		echo "root_uuid=$ROOT_UUID" >> UUID.txt
+		echo "home_uuid=$HOME_UUID" >> UUID.txt	
 
 		### Mount and Create Subvolumes
 
@@ -155,9 +159,6 @@ locale_selector () {
 ### Phase 2 #######
 
 	mount UUID="$ROOT_UUID" -o compress=zstd /mnt
-	input_print "Press any key to continue..."
-	read -n 1 -s -r
-	info_print ""
     ### Make Mountpoints for Subvolumes
         info_print "Creating mountpoints for subvolumes inside root; home and efi..."
 
@@ -174,12 +175,11 @@ locale_selector () {
         sudo mkdir /mnt/var/tmp
         sudo mkdir /mnt/efi
         sudo mkdir /mnt/home
-		input_print "Press any key to continue..."
-		read -n 1 -s -r
-		info_print ""
 
 		pacman -Syy
 		pacman -S tree
+		clear
+
 		info_print "The following mountpoints were just created:"
 		tree -L 3 /mnt
 		input_print "Press any key to continue..."
@@ -188,10 +188,6 @@ locale_selector () {
 		clear
 
 		info_print "Mounting ROOT subvolumes, HOME and swapon..."
-		input_print "Press any key to continue..."
-		read -n 1 -s -r
-		info_print ""
-
         sudo mount UUID="$ROOT_UUID" -o subvol=@/.snapshots,compress=zstd /mnt/.snapshots
         sudo mount UUID="$ROOT_UUID" -o subvol=@/boot/grub,compress=zstd /mnt/boot/grub
         sudo mount UUID="$ROOT_UUID" -o subvol=@/opt,compress=zstd /mnt/opt
@@ -206,9 +202,7 @@ locale_selector () {
         sudo mount UUID="$EFI_UUID" /mnt/efi
         sudo mount UUID="$HOME_UUID" /mnt/home
         sudo swapon UUID="$SWAP_UUID"
-        input_print "Press any key to continue..."
-        read -n 1 -s -r
-		info_print ""
+		clear
 
 		info_print "Verify partitions, formatting and mountpoints!"
 		sudo lsblk $DISK -o NAME,SIZE,FSTYPE,MOUNTPOINTS
@@ -230,7 +224,6 @@ info_print "Base packages installation done..."
 input_print "Press any key to continue..."
 read -n 1 -s -r
 clear
-### End of Pacstrap Installation #######
 
 ###################### Generate fstab and Edit fstab ##########################
 # Generate_fstab
@@ -247,9 +240,6 @@ sed -i "/subvolid=258/ c $SUB" /mnt/etc/fstab
 ##  Edit 10_linux and 20_linux_xen files
 sed -i 's/rootflags=subvol=${rootsubvol}//g' /mnt/etc/grub.d/10_linux
 sed -i 's/rootflags=subvol=${rootsubvol}//g' /mnt/etc/grub.d/20_linux_xen
-
-input_print "Generating, Editing fstab & editing 10_linux & 20_linux_xen files over. Press any key to continue..."
-read -n 1 -s -r
 
 #################### System configurations without chrooting ##########
 info_print "Configuring system..."
@@ -280,36 +270,31 @@ echo "root:haokip" | arch-chroot /mnt chpasswd
 
 # Setting user account with sudo privileges
 info_print "Setting User Account..."
-#if [[ -n "$username" ]]; then
-        echo "%wheel ALL=(ALL:ALL) ALL" > /mnt/etc/sudoers.d/wheel
-        info_print "Adding User haopu to the system with root privileges."
-        arch-chroot /mnt useradd -m -G wheel -s /bin/bash haopu
-        info_print "Setting User password for haopu."
-        echo "haopu:haokip" | arch-chroot /mnt chpasswd
-#fi
+echo "%wheel ALL=(ALL:ALL) ALL" > /mnt/etc/sudoers.d/wheel
+info_print "Adding User haopu to the system with root privileges."
+arch-chroot /mnt useradd -m -G wheel -s /bin/bash haopu
+info_print "Setting User password for haopu."
+echo "haopu:haokip" | arch-chroot /mnt chpasswd
+
 input_print "Press any key to continue..."
 read -n 1 -s -r
 info_print ""
 clear
 
-info_print "About to enter arch-chroot..."
-input_print "Press any key to continue..."
-read -n 1 -s -r
-
 #### Main chroot section
 info_print "Settings inside arch-chroot..."
 arch-chroot /mnt /bin/bash -e <<EOF
-        # 1. Setting up timezone
+        # Setting up timezone
         echo "Setting up timezone..."
         ln -sf /usr/share/zoneinfo/$(curl -s http://ip-api.com/line?fields=timezone) /etc/localtime &>/dev/null
 
         pacman -Syy
 
-        # 3. Synchronize clocks
+        # Synchronize clocks
         echo "Synchronizing hwclock to systohc..."
          hwclock --systohc
 
-# 4. Initialize Snapper
+		# Initialize Snapper
         echo "Initializing Snapper..."
         umount /.snapshots
         rm -r /.snapshots
@@ -324,24 +309,26 @@ arch-chroot /mnt /bin/bash -e <<EOF
 
         # 5. Installing GRUB.
         echo "Installing GRUB..."
-    grub-install --target=x86_64-efi --efi-directory=/efi --bootloader-id=ARCH-B --modules="normal test efi_gop efi_uga search echo linux all_video gfxmenu gfxterm_background gfxterm_menu gfxterm loadenv configfile gzio part_gpt btrfs"
-		grub-mkconfig -o /boot/grub/grub.cfg &>/dev/null
+        grub-install --target=x86_64-efi --efi-directory=/efi --bootloader-id=ARCH-B --modules="normal test efi_gop efi_uga search echo linux all_video gfxmenu gfxterm_background gfxterm_menu gfxterm loadenv configfile gzio part_gpt btrfs"
+		grub-mkconfig -o /boot/grub/grub.cfg
 	
 		systemctl enable NetworkManager
 
         exit
 EOF
+
 # Copy post-install script (including related files, if any)
 sudo cp post-install.sh /mnt/home/haopu/
 sudo cp cosmetics /mnt/home/haopu/
+sudo cp UUID.txt /mnt/home/haopu/
 sudo umount -a &>/dev/null
 clear
-info_print "                   Installation Complete!"
+info_print "                    Installation Complete!"
 info_print "                 Type reboot and press Enter."
 info_print "IMPORTANT! After reboot, you must still run the post-install.sh script."
 info_print "1. Log back in as your username (not root!)."
 info_print "2. Run the script: ./post-install.sh"
-info_print "3. NOTE: You will be greeted with a black getty1. "
+info_print "3. NOTE: You will be greeted with a black tty1. "
 info_print ""
 info_print ""
 info_print "You are now ready to reboot...press any key to continue..."
