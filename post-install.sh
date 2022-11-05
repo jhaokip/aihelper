@@ -1,6 +1,7 @@
 #!/bin/bash
 
 source cosmetics
+source UUID.txt
 
 #######################################################################################
 #
@@ -22,15 +23,17 @@ cosmetics
 	sudo chown $USER:$USER .xinitrc
 	sed -i '51,55d' .xinitrc
 	echo "## Compositor" >> .xinitrc
-	echo "picom -f &" >> .xinitrc
+	echo "/usr/bin/picom -f &" >> .xinitrc
 	echo ""
-	echo "## Resolution"
-	echo "xrandr --output Virtual-1 --mode 1920x1080 &"
+	echo "## Resolution" >> .xinitrc
+	echo "xrandr --output Virtual-1 --mode 1920x1080 &" >> .xinitrc
 	echo ""
-	echo "Wallpaper restore"
-	echo "/usr/bin/nitrogen --restore &"
+	echo "Wallpaper restore" >> .xinitrc
+	echo "/usr/bin/nitrogen --restore &" >> .xinitrc
+
 	echo "## Start i3" >> .xinitrc
 	echo "exec i3" >> .xinitrc
+
 	info_print "i3WM installation is now complete!"
 	input_print "Press any key to continue..."
 	read -n 1 -s -r
