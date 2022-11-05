@@ -1,7 +1,6 @@
 #!/bin/bash
 
 source cosmetics
-source UUID.txt
 
 #######################################################################################
 #
@@ -11,6 +10,11 @@ source UUID.txt
 cosmetics
 
 # Installing i3WM
+	
+	info_print "Synchronizing pacman repositories..."
+	sudo pacman -Syy
+	clear
+	
 	info_print "Installing i3 WM's..." 
 	sudo pacman -S --noconfirm --needed xorg xorg-xinit i3-gaps i3lock i3status dmenu xfce4-terminal firefox picom nitrogen lxappearance archlinux-wallpaper arc-gtk-theme materia-gtk-theme papirus-icon-theme
 	clear
@@ -20,6 +24,11 @@ cosmetics
 	echo "## Compositor" >> .xinitrc
 	echo "picom -f &" >> .xinitrc
 	echo ""
+	echo "## Resolution"
+	echo "xrandr --output Virtual-1 --mode 1920x1080 &"
+	echo ""
+	echo "Wallpaper restore"
+	echo "/usr/bin/nitrogen --restore &"
 	echo "## Start i3" >> .xinitrc
 	echo "exec i3" >> .xinitrc
 	info_print "i3WM installation is now complete!"
@@ -29,21 +38,23 @@ cosmetics
 #####################################################################
 
 # Enable AUR Helper (paru-bin)
-info_print "Updating pacman repositories..."
-sudo pacman -Syy
 
-info_print "Installing AUR helper (paru-bin)"
-mkdir AUR
-cd AUR
-git clone https://aur.archlinux.org/paru-bin.git
-cd paru-bin
-makepkg -sic
-clear
+#info_print "Installing AUR helper (paru-bin)"
+#mkdir AUR
+#cd AUR
+#git clone https://aur.archlinux.org/paru-bin.git
+#cd paru-bin
+#makepkg -sic
+#clear
 
 # Enable booting from Snapshots in GRUB Menu
 info_print "Enabling booting from GRUB Menu snapshots..."
-paru -Sa --noconfirm snap-pac-grub
-sudo grub-mkconfig -o /boot/grub/grub.cfg
+#paru -Sa --noconfirm snap-pac-grub
+#sudo grub-mkconfig -o /boot/grub/grub.cfg
+#clear
+git clone https://aur.archlinux.org/snap-pac-grub.git
+cd snap-pac-grub
+makepkg -si
 clear
 
 # Create base configuration snapshot
