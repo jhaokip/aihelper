@@ -215,8 +215,7 @@ locale_selector () {
 
 ### Pacstrap Installation ###
 Base_Packages="base linux linux-headers intel-ucode linux-firmware sof-firmware base-devel btrfs-progs ntfs-3g nano vim tree grub grub-btrfs efibootmgr os-prober snapper snap-pac mtools dosfstools networkmanager network-manager-applet reflector git man-db man-pages texinfo wpa_supplicant dialog pulseaudio pavucontrol alsa-utils alsa-plugins xdg-utils xdg-user-dirs"
-info_print "Pacstrap /mnt installation..."
-input_print "Press any key to continue..."
+input_print "Press any key to Pacstrap /mnt installation..."
 read -n 1 -s -r
 
 pacstrap /mnt $Base_Packages
