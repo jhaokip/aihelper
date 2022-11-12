@@ -16,7 +16,8 @@ cosmetics
 	sudo pacman -Syy
 	clear
 	
-	info_print "Installing i3 WM's..." 
+	input_print "Press any key to install i3 WM's..." 
+	read -n 1 -s -r
 	sudo pacman -S --noconfirm --needed xorg xorg-xinit i3-gaps i3lock i3status dmenu xfce4-terminal firefox picom nitrogen lxappearance archlinux-wallpaper arc-gtk-theme materia-gtk-theme papirus-icon-theme
 	clear
 	sudo cp /etc/X11/xinit/xinitrc ~/.xinitrc
