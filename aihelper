@@ -76,7 +76,7 @@ locale_selector () {
 
 		### Mount and Create Subvolumes
 
-		info_print "Mounting the root BTRFS partition..."
+	info_print "Mounting the root BTRFS partition..."
         sudo mount UUID="$ROOT_UUID" /mnt &>/dev/null
 
         info_print "Create subvolume/mnt/@ "
@@ -134,7 +134,7 @@ locale_selector () {
         sed "s|temp|$Date|g" info-dummy.xml > info.xml
         sudo cp info.xml /mnt/@/.snapshots/1/
 
-		info_print "Setting default subvolume..."
+       	info_print "Setting default subvolume..."
         sudo btrfs subvolume set-default $(btrfs subvolume list /mnt | grep "@/.snapshots/1/snapshot" | grep -oP '(?<=ID )[0-9]+') /mnt
 
         info_print "Enabling quotas on btrfs filesystem..."
@@ -146,14 +146,15 @@ locale_selector () {
         sudo chattr +C /mnt/@/var/spool
         sudo chattr +C /mnt/@/var/tmp
 
-		info_print "Created  subvolumes on /mnt: (sudo btrfs subvolume list /mnt)"
+	info_print "Created  subvolumes on /mnt: (sudo btrfs subvolume list /mnt)"
         sudo btrfs subvolume list /mnt
-        input_print "Press any key to continue..."
+
+	input_print "Press any key to continue..."
         read -n 1 -s -r
-		info_print ""
+	info_print ""
 
         sudo umount /mnt
-		clear
+	clear
 
 ### End of phase one ########
 ### Phase 2 #######
