@@ -256,7 +256,7 @@ echo "KEYMAP=us" > /mnt/etc/vconsole.conf
 info_print "Setting up hosts file."
 cat > /mnt/etc/hosts <<EOF
 127.0.0.1       localhost
-::1                     localhost
+::1             localhost
 127.0.1.1       archie39.localdomain   archie39
 EOF
 
